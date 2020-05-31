@@ -6,13 +6,12 @@ GPIO.setmode(GPIO.BCM)
 GPIO.setup(leak_channel,GPIO.IN)
 client = mqtt.Client()
 
-leak_topic = "/home/brady/leak"
-status_topic = "home/brady/status"
 this_pi = "brady"
-this_pi_password = "tom"
 
-def on_connect(client,userdata,flags,rc):
-    print ("connected with code "+str(rc))
+leak_topic = f"/home/{this_pi}/leak"
+status_topic = f"/home/{this_pi}/status"
+reinitialize = "/reinitialize"
+this_pi_password = "tom"
 
 def leak_update(channel) :
         if GPIO.input(channel):
@@ -23,18 +22,33 @@ def leak_update(channel) :
             client.publish(leak_topic, "wet", 1)
 
 def initialize_states() :
+    print("connected to broker")
     client.publish(status_topic, "online",1)
     leak_update(leak_channel)
 
+def receive_msg(client, userdata, msg) : 
+    print(f"received a message on {msg.topic}")
+    switcher = {
+            reinitialize: initialize_states
+    }
+    switcher.get(msg.topic, lambda: ())()
+
+def on_connect(client,userdata,flags,rc):
+    initialize_states() 
+    res = client.subscribe(reinitialize, qos=1)
+    print(f"sub result: {res}")
+
+
+
 client.username_pw_set(this_pi,this_pi_password)        
 client.on_connect=on_connect
-client.set_will(status_topic, payload = mk_payload("offline"))
+client.will_set(status_topic, payload = "offline")
+client.on_message = receive_msg
 
-client.connect("homeassistant.local", 1883,60)
+client.connect("homeassistant.local", 1883,2)
 
 
 GPIO.add_event_detect(leak_channel, GPIO.BOTH, bouncetime=300)
 GPIO.add_event_callback(leak_channel, leak_update)
 
-initialize_states()
 client.loop_forever()
