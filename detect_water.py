@@ -6,10 +6,12 @@ from gpiozero import MotionSensor
 import Adafruit_DHT
 import json
 pir_channel = 4
-leak_channel = 14
+leak_a_channel = 14
+leak_b_channel = 24
 
 GPIO.setmode(GPIO.BCM)
-GPIO.setup(leak_channel,GPIO.IN)
+GPIO.setup(leak_a_channel,GPIO.IN)
+GPIO.setup(leak_b_channel,GPIO.IN)
 GPIO.setup(pir_channel,GPIO.IN)
 
 client = mqtt.Client()
@@ -18,20 +20,25 @@ dht_pin = 18
 
 this_pi = "brady"
 
-leak_topic = f"/home/{this_pi}/leak"
+leak_a_topic = f"/home/{this_pi}/leak/A"
+leak_b_topic = f"/home/{this_pi}/leak/B"
 pir_topic = f"/home/{this_pi}/pir"
 climate_topic = f"/home/{this_pi}/climate"
 status_topic = f"/home/{this_pi}/status"
 reinitialize = "/reinitialize"
 this_pi_password = "tom"
 
-def leak_update(channel) :
+def leak_update(topic,channel) :
         if GPIO.input(channel):
             print("no water")
-            client.publish(leak_topic, "dry", 1)
+            client.publish(topic, "dry", 1)
         else:
             print("water detected")
-            client.publish(leak_topic, "wet", 1)
+            client.publish(topic, "wet", 1)
+def leak_a_update(channel) : 
+    leak_update(leak_a_topic,channel)
+def leak_b_update(channel) : 
+    leak_update(leak_b_topic,channel)
 
 def pir_update(channel): 
    if GPIO.input(channel):
@@ -53,7 +60,8 @@ def climate_update():
 def initialize_states() :
     print("connected to broker")
     client.publish(status_topic, "online",1)
-    leak_update(leak_channel)
+    leak_a_update(leak_a_channel)
+    leak_b_update(leak_b_channel)
     climate_update()
 
 def receive_msg(client, userdata, msg) : 
@@ -79,8 +87,11 @@ client.on_message = receive_msg
 
 client.connect("10.0.0.9", 1883,2)
 
-GPIO.add_event_detect(leak_channel, GPIO.BOTH, bouncetime=300)
-GPIO.add_event_callback(leak_channel, leak_update)
+GPIO.add_event_detect(leak_a_channel, GPIO.BOTH, bouncetime=300)
+GPIO.add_event_callback(leak_a_channel, leak_a_update)
+
+GPIO.add_event_detect(leak_b_channel, GPIO.BOTH, bouncetime=300)
+GPIO.add_event_callback(leak_b_channel, leak_b_update)
 
 GPIO.add_event_detect(pir_channel, GPIO.BOTH, bouncetime=300)
 GPIO.add_event_callback(pir_channel, pir_update)
