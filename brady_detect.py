@@ -15,7 +15,7 @@ GPIO.setup(leak_b_channel,GPIO.IN)
 GPIO.setup(pir_channel,GPIO.IN)
 
 client = mqtt.Client()
-dht_sensor = Adafruit_DHT.DHT11
+dht_sensor = Adafruit_DHT.DHT22
 dht_pin = 18
 
 this_pi = "brady"
@@ -50,7 +50,7 @@ def pir_update(channel):
 def climate_update():
     h,t = Adafruit_DHT.read(dht_sensor, dht_pin)
     if h is not None and t is not None:
-      sensor_data = { "temperature": t, "humidity": h }
+      sensor_data = { "temperature": round(t,2), "humidity": round(h,2) }
       j = json.dumps(sensor_data)
       print(f"json formatted:: {json.dumps(sensor_data)}")
       client.publish(climate_topic, j, 1)
