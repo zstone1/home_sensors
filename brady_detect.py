@@ -48,7 +48,7 @@ def pir_update(channel):
        print(f"pir turned off")
 
 def climate_update():
-    h,t = Adafruit_DHT.read(dht_sensor, dht_pin)
+    h,t = Adafruit_DHT.read_retry(dht_sensor, dht_pin)
     if h is not None and t is not None:
       sensor_data = { "temperature": round(t,2), "humidity": round(h,2) }
       j = json.dumps(sensor_data)
